@@ -1,5 +1,18 @@
 const { createCanvas, loadImage } = require('canvas');
-const { writeFileSync } = require('node:fs');
+const { writeFileSync, existsSync, readFileSync } = require('node:fs');
+
+const loadSaves = () => {
+	if (!existsSync('./saves.json')) {
+		writeFileSync('./saves.json', '{}');
+		return {};
+	}
+	return JSON.parse(readFileSync('./saves.json'));
+}
+const dumpAs = (array, name) => {
+	const values = loadSaves();
+	values[name] = array;
+	writeFileSync('./saves.json', JSON.stringify(values, null, 0));
+}
 
 const main = async() => {
 	const image = await loadImage('board.jpg');
@@ -119,6 +132,27 @@ const main = async() => {
 		if (text == "push") {
 			draw_image();
 			console.log(`\x1b[32m Added \x1b[33m${array.length}\x1b[32m points\x1b[0m`);
+		}
+		if (text.startsWith('dump ')) {
+			const name = text.slice('dump '.length);
+			dumpAs(array, name);
+
+			console.log(`Dumped config as \x1b[91m${name}\x1b[0m`);
+		}
+		if (text.startsWith('load ')) {
+			const name = text.slice('load '.length);
+			const save = loadSaves()[name];
+
+			if (!save) {
+				console.log(`\x1b[31mCannot find \x1b[33m${name}\x1b[0m`);
+			} else {
+				array.splice(0, array.length);
+				save.forEach(x => {
+					draw(x[0], x[1], x[2])
+				});
+
+				console.log(`\x1b[32mLoaded \x1b[33m${array.length}\x1b[32m elements from \x1b[91m${name}\x1b[0m`);
+			}
 		}
 		if (text == 'save') {
 			writeFileSync("output.jpg", Buffer.from(canvas.toBuffer()))
